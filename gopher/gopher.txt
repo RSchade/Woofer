@@ -1,0 +1,7 @@
+1CIA World Factbook	/Archives/mirrors/textfiles.com/politics/CIA	gopher.quux.org	70
+
+As of 2012, there remained about 160 gopher servers indexed by Veronica-2,[16] reflecting a slow growth from 2007 when there were fewer than 100.[17] They are typically infrequently updated. On these servers Veronica indexed approximately 2.5 million unique selectors. A handful of new servers were being set up every year by hobbyists with over 50 having been set up and added to Floodgap's list since 1999.[18] A snapshot of Gopherspace in 2007 circulated on BitTorrent and was still available in 2010.[19] Due to the simplicity of the Gopher protocol, setting up new servers or adding Gopher support to browsers is often done in a tongue-in-cheek manner, principally on April Fools' Day.[20]
+In November 2014 Veronica indexed 144 gopher servers,[16] reflecting a small drop from 2012, but within these servers Veronica indexed approximately 3 million unique selectors.
+In March 2016 Veronica indexed 135 gopher servers,[16] within which it indexed approximately 4 million unique selectors.
+In March 2017 Veronica indexed 133 gopher servers,[16] within which it indexed approximately 4.9 million unique selectors.
+In May 2018 Veronica indexed 260 gopher servers, [16] within which it indexed approximately 3.7 million unique selectors.
