@@ -15,6 +15,7 @@ import Data.Maybe
 import Data.List
 import Text.ParserCombinators.ReadP as RP
 import Control.Applicative
+import Config
 
 -- Contains functions that parse plain text files and convert them into Gopher syntax
 -- Contains functions that parse gophermaps and convert them into Gopher syntax
@@ -43,8 +44,8 @@ txtType = 'i'
 width = 67
 
 -- footer for every page
-footer = [(Statement 'i' (take width $ repeat '_') Nothing),
-          (Statement 'i' "Served by Woofer" Nothing)]
+footer = [(Statement txtType (take width $ repeat '_') Nothing),
+          (Statement txtType "Served by Woofer" Nothing)]
 
 instance Show StatementPred where
     show (StatementPred sel hst prt) = sel ++ stmtSep ++
@@ -78,9 +79,9 @@ prepareResponse :: [GopherStatement] -> String
 prepareResponse stmts = (concat $ map (\stmt -> show $ validateStatement stmt) (stmts ++ footer)) ++ "." ++ lineSep
 
 -- Converts a gophermap into an array of Gopher statements
-parseGMap :: String -> [GopherStatement]
-parseGMap gmap =
-    removeComments $ map (\x -> fst $ head $ reverse $ readP_to_S parseGMapLineP x) (lines gmap)
+parseGMap :: Config -> String -> [GopherStatement]
+parseGMap cfg gmap =
+    removeComments $ map (\x -> fst $ head $ reverse $ readP_to_S (parseGMapLineP cfg) x) (lines gmap)
 
 -- Remove comment lines from a list of Gopher statements
 removeComments :: [GopherStatement] -> [GopherStatement]
@@ -110,15 +111,26 @@ getSep = manyTill (get) (satisfy (== (head stmtSep)))
 
 -- Returns something if this line is a resource
 -- Resource lines have tabs and start with a valid type
-parseResourceLineP :: ReadP GopherStatement
-parseResourceLineP = do
+parseResourceLineP :: String -> String -> ReadP GopherStatement
+parseResourceLineP h p = do
     gType <- satisfy (\x -> elem x validTypes)
     disp <- getSep
-    sel <- getSep
-    host <- getSep
-    port <- many1 get
+    sel <- getSep <|> (many1 get)
+    (host, port) <- parseDefHostPortP h p <|> parseHostPortP
     eof
     return (Statement gType disp $ Just (StatementPred sel host (read port :: Int)))
+
+-- It's possible for a resource line to not have the host or port
+-- This returns the default values for that
+parseDefHostPortP :: String -> String -> ReadP (String, String)
+parseDefHostPortP h p = do
+    return (h, p)
+
+parseHostPortP :: ReadP (String, String)
+parseHostPortP = do
+    host <- getSep
+    port <- many1 get
+    return (host, port)
 
 parseBlankLineP :: ReadP GopherStatement
 parseBlankLineP = do
@@ -130,6 +142,8 @@ parseBlankLineP = do
 -- A comment is denoted by a #, these are ignored
 -- Text has no tabs and is not a comment
 -- A resource has tabs to denote the selector, hostname and port 
-parseGMapLineP :: ReadP GopherStatement
-parseGMapLineP = do
-    (parseCommentLineP <|> parseResourceLineP <|> parseTextLineP <|> parseBlankLineP)
+parseGMapLineP :: Config -> ReadP GopherStatement
+parseGMapLineP cfg = do
+    let host = netBind $ networkConf cfg
+        port = show $ netPort $ networkConf cfg
+    (parseCommentLineP <|> (parseResourceLineP host port) <|> parseTextLineP <|> parseBlankLineP)

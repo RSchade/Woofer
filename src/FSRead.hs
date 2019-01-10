@@ -11,18 +11,16 @@ import Parser
 import qualified Data.ByteString.Char8 as B
 import System.FilePath
 import System.Directory
+import Config
 
-gopherDir = normalise "./gopher"
 gopherMapName = "gophermap"
-curHost = "192.168.1.66"
-curPort = 70
 
 -- Gets a text resource (gophermap compatibile) from a given file path
 -- converts it into an array of Gopher statements
-getTextResource :: FilePath -> IO [GopherStatement]
-getTextResource fname = do
+getTextResource :: Config -> FilePath -> IO [GopherStatement]
+getTextResource cfg fname = do
     txt <- readFile fname
-    return $ parseGMap txt
+    return $ parseGMap cfg txt
 
 -- Gets a binary (unparsed) resource from a given file path
 getBinaryResource :: FilePath -> IO B.ByteString
@@ -36,8 +34,8 @@ goesUp p = or $ map (== "..") $ splitDirectories p
 -- Paths must be direct (no ../)
 -- They must point to a valid file
 -- Returns a normalised version of the path given
-validatePath :: FilePath -> FilePath
-validatePath rawPath
+validatePath :: FilePath -> FilePath -> FilePath
+validatePath gopherDir rawPath
     | not $ isValid path  = error "Invalid path"
     | head rawPath /= '/' = error "Non-absolute path"
     | goesUp path         = error "Path backtracks"
@@ -50,13 +48,16 @@ validatePath rawPath
 -- chooses the correct function to use based on the resource path
 -- If the given path points to a file, return that
 -- If the given path points to a directory, generate a Gopher response based on that
-getResource :: FilePath -> IO B.ByteString
-getResource rawPath = do
-    let path = validatePath rawPath
+getResource :: Config -> FilePath -> IO B.ByteString
+getResource cfg rawPath = do
+    let bind = netBind $ networkConf cfg
+        port = netPort $ networkConf cfg
+        gDir = gopherDir $ gopherConf cfg
+        path = validatePath gDir rawPath
     if hasTrailingPathSeparator rawPath
     then
       do
-          gMap <- getGopherMap path rawPath
+          gMap <- getGopherMap cfg path rawPath
           return $ B.pack $ prepareResponse $ gMap
     else
       do
@@ -66,19 +67,23 @@ getResource rawPath = do
 -- Gets a gophermap for a particular directory, either by
 -- finding it on disk or generating it
 -- pass in a directory to generate/retrieve from and the raw path from the Gopher client
-getGopherMap :: FilePath -> FilePath -> IO [GopherStatement]
-getGopherMap path rawPath = do
-    let gopherFilePath = path </> gopherMapName
+getGopherMap :: Config -> FilePath -> FilePath -> IO [GopherStatement]
+getGopherMap cfg path rawPath = do
+    let bind = netBind $ networkConf cfg
+        port = netPort $ networkConf cfg
+        gopherFilePath = path </> gopherMapName
+    putStrLn gopherFilePath
     files <- listDirectory path
     let hasGMap = elem gopherMapName files
     if hasGMap
     then
       do
-          gMap <- getTextResource gopherFilePath
+          gMap <- getTextResource cfg gopherFilePath
           return gMap
     else
-        return $ map (\x -> buildGopherStatement x (rawPath </> x)) files
+        return $ map (\x -> buildGopherStatement bind port x (rawPath </> x)) files
 
 -- Builds a statement based on the given file and path
-buildGopherStatement :: String -> String -> GopherStatement
-buildGopherStatement file path = Statement '0' (takeFileName file) $ Just (StatementPred path curHost curPort)
+buildGopherStatement :: String -> Int -> String -> String -> GopherStatement
+buildGopherStatement defHost defPort file path = 
+    Statement '0' (takeFileName file) $ Just (StatementPred path defHost defPort)

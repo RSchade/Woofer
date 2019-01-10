@@ -1,10 +1,8 @@
 module Main where
 
 import Server
+import Config
 
 main :: IO ()
 main = do
-    setUpConfig
-    wooferListen
-
--- main = putStrLn "TEST"
+    wooferListen =<< importConfig
